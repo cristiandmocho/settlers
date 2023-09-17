@@ -21,6 +21,7 @@ class Command {
 
 import InventoryInterface from "../utils/inventory.js";
 import ChestInterface from "../utils/chest.js";
+import HealthInterface from "../utils/health.js";
 
 export default class BaseBot extends EventEmmiter {
   constructor() {
@@ -33,8 +34,9 @@ export default class BaseBot extends EventEmmiter {
     this.Commands = [];
     this.Level = 0;
 
-    this.Inventory = new InventoryInterface(this.Bot);
+    this.InventoryInterface = new InventoryInterface(this.Bot);
     this.ChestInterface = new ChestInterface(this.Bot);
+    this.HealthInterface = new HealthInterface(this.Bot);
 
     //Adding basic commands
     const basicCommands = [
@@ -73,7 +75,8 @@ export default class BaseBot extends EventEmmiter {
 
     this.Bot.loadPlugin(pathfinder);
     this.MCData = MCData(this.Bot.version);
-    this.Inventory = new InventoryInterface(this.Bot);
+
+    this.InventoryInterface = new InventoryInterface(this.Bot);
     this.ChestInterface = new ChestInterface(this.Bot);
 
     // Bot events
@@ -97,7 +100,7 @@ export default class BaseBot extends EventEmmiter {
     });
 
     this.Bot.on("end", (reason) => {
-      this.emit("end", { reason });
+      this.emit("end", reason);
     });
 
     this.Bot.on("chat", (username, message) => {
@@ -159,7 +162,7 @@ export default class BaseBot extends EventEmmiter {
    * @param {{x: number, y: number, z: number}} point The point to move to
    * @param {number} range The distance to keep from the point
    */
-  moveToPoint(point, range) {
+  moveToPoint(point, range = 0) {
     if (!point) {
       this.emit("error", { message: "No point provided!", point });
       return;
@@ -167,15 +170,12 @@ export default class BaseBot extends EventEmmiter {
 
     const goal = new goals.GoalNear(point.x, point.y, point.z, range);
 
-    this.Bot.pathfinder.setGoal(goal);
+    this.Bot.pathfinder.goto(goal);
     this.emit("move", { point, range });
   }
 
   moveToPlayer(username) {
     const player = this.Bot.players[username];
-
-    console.log(player);
-
     this.moveToPoint(player?.entity?.position, 1);
   }
 
@@ -242,6 +242,6 @@ export default class BaseBot extends EventEmmiter {
   }
 
   ListInventory() {
-    this.Inventory.ListInventory();
+    this.InventoryInterface.ListInventory();
   }
 }

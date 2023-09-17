@@ -1,8 +1,11 @@
-export default class InventoryInterface {
+import EventEmmiter from "events";
+
+export default class InventoryInterface extends EventEmmiter {
   /**
    * @param {import("mineflayer").Bot} bot The bot instance
    */
   constructor(bot) {
+    super();
     this.Bot = bot;
   }
 
@@ -20,11 +23,9 @@ export default class InventoryInterface {
   ListInventory() {
     if (this.isInventoryEmpty()) return;
 
+    this.Bot.chat("Here's my inventory:");
     this.Bot.inventory.slots.forEach((item) => {
-      if (item) {
-        this.Bot.chat("Here's my inventory:");
-        this.Bot.chat(`- ${item.name} x ${item.count}`);
-      }
+      if (item) this.Bot.chat(`- ${item.name} x ${item.count}`);
     });
   }
 
@@ -52,7 +53,7 @@ export default class InventoryInterface {
     if (this.isInventoryEmpty()) return;
 
     const items = this.Bot.inventory.items();
-    const itemToEquip = items.find((item) => item.name === item);
+    const itemToEquip = items.find((ite) => ite.name.indexOf(item) > -1);
 
     if (!itemToEquip) {
       this.Bot.chat(`I don't have any ${item}!`);
@@ -61,9 +62,33 @@ export default class InventoryInterface {
 
     try {
       await this.Bot.equip(itemToEquip, "hand");
-      this.Bot.chat(`Equipped ${item}!`);
+      this.emit("equip", { item: itemToEquip });
     } catch (err) {
-      this.Bot.chat(`Unable to equip ${item}!`);
+      this.Bot.chat(`Unable to equip ${itemToEquip.displayName}!`);
+      console.log(err);
+    }
+  }
+
+  /**
+   * @param {import("prismarine-block").Block} block The block to equip the best item for
+   */
+  async EquipBestItemFor(block) {
+    const items = this.Bot.inventory.items().sort((a, b) => {
+      return a.type - b.type;
+    });
+
+    const itemToEquip = items.find((item) => block.canHarvest(item.type));
+
+    if (!itemToEquip) {
+      this.Bot.chat(`I don't have any tool capable of harvesting the blocks!`);
+      return;
+    }
+
+    try {
+      await this.Bot.equip(itemToEquip, "hand");
+      this.Bot.chat(`Equipped ${block.name}!`);
+    } catch (err) {
+      this.Bot.chat(`Unable to equip ${block.name}!`);
       console.log(err);
     }
   }
@@ -96,7 +121,9 @@ export default class InventoryInterface {
     const missingTools = [];
 
     tools.forEach((tool) => {
-      const item = items.find((item) => item.name === tool);
+      const item = items.find(
+        (item) => item.name.indexOf(tool.toLowerCase()) > -1
+      );
       if (!item) missingTools.push(tool);
     });
 
